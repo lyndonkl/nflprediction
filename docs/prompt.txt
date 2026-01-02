@@ -1,0 +1,84 @@
+We are starting a new project, the goals of this
+  project are:\
+  1. Understand how prediction markets in robinhood
+  work\
+  [] Step 1: Read documentation on robinhood prediction
+  markets\
+  [] Step 2: understand online odds for college
+  football game\
+  [] Step 3: Explain and understand options strategy
+  document
+  [] Step 4: Build app that will be used for trading on
+  Robinhood
+
+  Step 1: Read documentation on robinhood prediction
+  markets. The goal here is to read all the docs and
+  work with me using appropriate learning skills to
+  document how robind hood prediction markets work, the
+  types of trades, strategies people use etc. You are
+  allowed to use web search here. Create a document
+  that we will reference and use later for building the
+  app
+  Step 2: Use web search to then focus on data we can
+  get online if we wanted to bet on college football
+  games in Robinhood, for example, odds on a game, how
+  to understand them, use learning related skills and
+  web search here. Create a document that we will
+  reference and use later for building the app. We also
+  want to get an understanding of apis avaiable for
+  free that we can call and the strategies to get data
+  (polling, socket? etc. )
+  Step 3: Use the skill-writer by invoking it to read
+  and document the optionas trading stategies, having
+  used relevant learning skills to help me understand
+  the strategy from three levels, similar to how the
+  book The Art and Craft of Problem solving talks about
+  understanding something. I want the fundamental tool
+  level info (greeks intuition etc, variables), the
+  high level strategic view, and the methodology view
+  that implements strategy using tools. You can create
+  multiple output documents for this step.
+  Step 4: Refer to the outputs from Step1, 2 and 3
+  above to generate a detailed step by step plan to
+  implement an app that will help me following the
+  workflow of a superforecaster, in the same way tha
+  tthe superforecaster agent detailed methodology tells
+  us to do. We want to build this into a web page for
+  college football. The app should be able to access
+  live odds (real time, polling), live scores, have an
+  appropriately represented visual UI that helps me see
+  live updated odds. We also want to consider how we
+  can apply optionas trading strategy to create complex
+  strategies to bet on college football. In this step,
+  the goal is to use the congitive-design skill and
+  brainstorming or ideation skills, feature ideation
+  etc, use all types of skills to understand and design
+  the idea for how to build this app. Use your outputs
+  to then generate a detailed plan for building the
+  app.
+
+
+  This is great, the only thing I would add is another
+  section on how we will use the superforecaster
+  methodology for bayesian updates and later steps. We
+  must enable the UI to allow the user to create
+  customized agents. On the backend, we need to design
+  a high level multi ai agent protocol that is based on
+  googles agent to agent protocol and borrows ideas
+  from the '/Users/kushaldsouza/Documents/Projects/nfle
+  ventprediction/ctc-principles-engineering.md'. Use
+  any skills that are relevant and web search combined
+  with the analysis of the document to come up with a
+  suitable design patterns for multi ai agent design
+  for agent to agent communication, these agents can as
+  options be attached to each stage of the forecaster
+  process and do things for us, like web search and
+  analysis. We need to think about what data we feed to
+  the agents, how to ensure they understand the data,
+  what we ask the agents to do, how we allow the user
+  to structure what they want the agent to do?
+  (prompts, templates? Something else? per stage for
+  superforecaster?), consistency of output formats from
+  the agent and how to convey that back to the UI.
+  Think deeply about all of the above and add a new doc
+  that documents everything.  
