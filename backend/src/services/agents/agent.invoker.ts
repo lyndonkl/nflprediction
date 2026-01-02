@@ -138,22 +138,219 @@ class AgentInvoker {
       };
     }
 
-    // Build template context
-    const templateContext = {
-      game: {
-        homeTeam: context.homeTeam,
-        awayTeam: context.awayTeam,
-        gameTime: context.gameTime.toISOString(),
-      },
-      context,
-      stage,
-      previousOutputs: this.getPreviousOutputs(context),
-    };
+    // Build comprehensive template context with all variables needed by enhanced prompts
+    const previousOutputs = this.getPreviousOutputs(context);
+    const templateContext = this.buildTemplateContext(stage, context, previousOutputs);
 
     return {
       systemPrompt: renderPrompt(template.systemPrompt, templateContext),
       userPrompt: renderPrompt(template.userPromptTemplate, templateContext),
     };
+  }
+
+  /**
+   * Build comprehensive template context for prompt rendering
+   */
+  private buildTemplateContext(
+    stage: ForecastingStage,
+    context: ForecastContext,
+    previousOutputs: Record<string, unknown>
+  ): Record<string, unknown> {
+    // Base context available to all stages
+    const baseContext: Record<string, unknown> = {
+      // Game info
+      gameId: context.gameId,
+      homeTeam: context.homeTeam,
+      awayTeam: context.awayTeam,
+      venue: context.homeTeam + ' Stadium', // Default venue name
+      gameTime: context.gameTime.toISOString(),
+      conference: 'Conference', // Would come from game data
+      isRivalry: false, // Would come from game data
+
+      // Rankings (would come from game data)
+      homeRanking: null,
+      awayRanking: null,
+
+      // Raw context and outputs
+      context,
+      stage,
+      previousOutputs,
+    };
+
+    // Stage-specific context
+    switch (stage) {
+      case 'reference_class':
+        // Reference class just needs game info
+        break;
+
+      case 'base_rate':
+        // Base rate needs reference classes from previous stage
+        baseContext.teamForProbability = context.homeTeam;
+        baseContext.referenceClasses = this.extractReferenceClasses(previousOutputs);
+        break;
+
+      case 'evidence_gathering':
+        // Evidence gathering needs base rate
+        baseContext.baseRate = this.extractBaseRate(previousOutputs);
+        baseContext.searchQueries = [
+          `${context.homeTeam} ${context.awayTeam} injury report`,
+          `${context.homeTeam} ${context.awayTeam} preview`,
+        ];
+        break;
+
+      case 'bayesian_update':
+        // Bayesian update needs prior and evidence
+        baseContext.prior = this.extractBaseRate(previousOutputs);
+        baseContext.evidence = this.extractEvidence(previousOutputs);
+        break;
+
+      case 'premortem':
+        // Premortem needs current probability, reasoning, and evidence
+        baseContext.currentProbability = this.extractPosterior(previousOutputs);
+        baseContext.reasoningSoFar = this.buildReasoningSummary(previousOutputs);
+        baseContext.evidenceUsed = this.extractEvidence(previousOutputs);
+        break;
+
+      case 'synthesis':
+        // Synthesis needs all previous outputs
+        baseContext.baseRate = this.extractBaseRate(previousOutputs);
+        baseContext.posteriorProbability = this.extractPosterior(previousOutputs);
+        baseContext.premortermConcerns = this.extractConcerns(previousOutputs);
+        baseContext.biasFlags = this.extractBiases(previousOutputs);
+        baseContext.allEvidence = this.extractEvidence(previousOutputs);
+        break;
+
+      case 'calibration':
+        // Calibration needs final probability
+        baseContext.predictedProbability = context.finalProbability || context.posteriorProbability || context.baseRate || 0.5;
+        break;
+    }
+
+    return baseContext;
+  }
+
+  /**
+   * Extract reference classes from previous outputs
+   */
+  private extractReferenceClasses(outputs: Record<string, unknown>): unknown[] {
+    const rcOutput = outputs['reference_class'];
+    if (Array.isArray(rcOutput) && rcOutput.length > 0) {
+      const firstOutput = rcOutput[0] as Record<string, unknown>;
+      if (Array.isArray(firstOutput?.matches)) {
+        return firstOutput.matches;
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Extract base rate from previous outputs
+   */
+  private extractBaseRate(outputs: Record<string, unknown>): number {
+    const brOutput = outputs['base_rate'];
+    if (Array.isArray(brOutput) && brOutput.length > 0) {
+      const firstOutput = brOutput[0] as Record<string, unknown>;
+      if (typeof firstOutput?.probability === 'number') {
+        return firstOutput.probability;
+      }
+    }
+    return 0.5; // Default
+  }
+
+  /**
+   * Extract evidence from previous outputs
+   */
+  private extractEvidence(outputs: Record<string, unknown>): unknown[] {
+    const evOutput = outputs['evidence_gathering'];
+    if (Array.isArray(evOutput)) {
+      const allEvidence: unknown[] = [];
+      for (const output of evOutput) {
+        const o = output as Record<string, unknown>;
+        if (Array.isArray(o?.evidenceItems)) {
+          allEvidence.push(...o.evidenceItems);
+        }
+      }
+      return allEvidence;
+    }
+    return [];
+  }
+
+  /**
+   * Extract posterior probability from Bayesian update
+   */
+  private extractPosterior(outputs: Record<string, unknown>): number {
+    const buOutput = outputs['bayesian_update'];
+    if (Array.isArray(buOutput) && buOutput.length > 0) {
+      const firstOutput = buOutput[0] as Record<string, unknown>;
+      if (typeof firstOutput?.posterior === 'number') {
+        return firstOutput.posterior;
+      }
+    }
+    // Fall back to base rate
+    return this.extractBaseRate(outputs);
+  }
+
+  /**
+   * Extract concerns from premortem outputs
+   */
+  private extractConcerns(outputs: Record<string, unknown>): string[] {
+    const pmOutput = outputs['premortem'];
+    if (Array.isArray(pmOutput)) {
+      const allConcerns: string[] = [];
+      for (const output of pmOutput) {
+        const o = output as Record<string, unknown>;
+        if (Array.isArray(o?.concerns)) {
+          allConcerns.push(...(o.concerns as string[]));
+        }
+      }
+      return allConcerns;
+    }
+    return [];
+  }
+
+  /**
+   * Extract biases from premortem outputs
+   */
+  private extractBiases(outputs: Record<string, unknown>): string[] {
+    const pmOutput = outputs['premortem'];
+    if (Array.isArray(pmOutput)) {
+      const allBiases: string[] = [];
+      for (const output of pmOutput) {
+        const o = output as Record<string, unknown>;
+        if (Array.isArray(o?.biases)) {
+          allBiases.push(...(o.biases as string[]));
+        }
+      }
+      return allBiases;
+    }
+    return [];
+  }
+
+  /**
+   * Build a summary of reasoning so far
+   */
+  private buildReasoningSummary(outputs: Record<string, unknown>): string {
+    const parts: string[] = [];
+
+    // Base rate reasoning
+    const brOutput = outputs['base_rate'];
+    if (Array.isArray(brOutput) && brOutput.length > 0) {
+      const o = brOutput[0] as Record<string, unknown>;
+      if (o?.reasoning) {
+        parts.push(`Base Rate: ${o.reasoning}`);
+      }
+    }
+
+    // Bayesian update chain
+    const buOutput = outputs['bayesian_update'];
+    if (Array.isArray(buOutput) && buOutput.length > 0) {
+      const o = buOutput[0] as Record<string, unknown>;
+      if (o?.updateChain) {
+        parts.push(`Bayesian Updates: ${o.updateChain}`);
+      }
+    }
+
+    return parts.join('\n\n') || 'No prior reasoning available.';
   }
 
   /**
