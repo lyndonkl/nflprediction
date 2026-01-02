@@ -1,15 +1,20 @@
 import express from 'express';
 import cors from 'cors';
-import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import 'dotenv/config';
 
 import gamesRouter from './routes/games.js';
 import forecastRouter from './routes/forecast.js';
 import positionsRouter from './routes/positions.js';
+import agentsRouter from './routes/agents.js';
+
+import { wsManager } from './websocket/ws.manager.js';
+import { wsBroadcaster } from './websocket/ws.broadcaster.js';
+import { config } from './config/index.js';
+import { serverLogger } from './utils/logger.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = config.port;
 
 // Middleware
 app.use(cors());
@@ -19,53 +24,51 @@ app.use(express.json());
 app.use('/api/games', gamesRouter);
 app.use('/api/forecast', forecastRouter);
 app.use('/api/positions', positionsRouter);
+app.use('/api/agents', agentsRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const wsStats = wsManager.stats();
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    websocket: {
+      clients: wsStats.totalClients,
+      subscriptions: wsStats.totalSubscriptions,
+    },
+  });
 });
 
 // Create HTTP server
 const server = createServer(app);
 
-// WebSocket server for real-time updates
-const wss = new WebSocketServer({ server, path: '/ws' });
+// Initialize WebSocket server
+wsManager.initialize(server);
 
-wss.on('connection', (ws: WebSocket) => {
-  console.log('Client connected to WebSocket');
-
-  ws.on('message', (message: Buffer) => {
-    try {
-      const data = JSON.parse(message.toString());
-      console.log('Received:', data);
-
-      // Handle subscription messages
-      if (data.type === 'subscribe') {
-        // TODO: Add to subscription list for game updates
-        ws.send(JSON.stringify({ type: 'subscribed', gameId: data.gameId }));
-      }
-    } catch (err) {
-      console.error('Invalid message:', err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// Broadcast to all connected clients
-export function broadcast(message: object) {
-  const payload = JSON.stringify(message);
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(payload);
-    }
-  });
-}
+// Initialize WebSocket broadcaster (connects pipeline events to WebSocket)
+wsBroadcaster.initialize();
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-  console.log(`WebSocket available at ws://localhost:${PORT}/ws`);
+  serverLogger.info({ port: PORT }, 'Backend server started');
+  serverLogger.info({ path: '/ws' }, 'WebSocket server available');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  serverLogger.info('SIGTERM received, shutting down');
+  wsManager.shutdown();
+  server.close(() => {
+    serverLogger.info('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  serverLogger.info('SIGINT received, shutting down');
+  wsManager.shutdown();
+  server.close(() => {
+    serverLogger.info('Server closed');
+    process.exit(0);
+  });
 });
