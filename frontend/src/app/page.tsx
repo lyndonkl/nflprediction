@@ -99,7 +99,9 @@ export default function Dashboard() {
   const filteredGames = displayGames.filter((game) => {
     if (filter === 'live' && game.status !== 'in_progress') return false;
     if (filter === 'upcoming' && game.status !== 'scheduled') return false;
-    if (conference !== 'all' && game.conference !== conference) return false;
+    // Filter by conference - treat null/undefined conference as 'CFB'
+    const gameConference = game.conference || 'CFB';
+    if (conference !== 'all' && gameConference !== conference) return false;
     return true;
   });
 
@@ -142,19 +144,19 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Conference filter - dynamically built from game data */}
+          {/* Conference filter */}
           <select
             value={conference}
             onChange={(e) => setConference(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
           >
             <option value="all">All Conferences</option>
-            {Array.from(new Set(displayGames.map(g => g.conference).filter(Boolean)))
-              .sort()
-              .map(conf => (
-                <option key={conf} value={conf}>{conf}</option>
-              ))
-            }
+            <option value="CFB">CFB (All)</option>
+            <option value="SEC">SEC</option>
+            <option value="Big Ten">Big Ten</option>
+            <option value="Big 12">Big 12</option>
+            <option value="ACC">ACC</option>
+            <option value="Pac-12">Pac-12</option>
           </select>
 
           {/* Refresh button */}
