@@ -2,7 +2,8 @@ import { agentRegistry } from './agent.registry.js';
 import { llmService } from '../external/llm.service.js';
 import { renderPrompt } from '../../utils/prompt.renderer.js';
 import { PROMPT_TEMPLATES } from '../../config/agents.config.js';
-import type { AgentCard, AgentContribution } from '../../types/agent.types.js';
+import { config } from '../../config/index.js';
+import type { AgentCard, AgentContribution, WebSearchSource, WebSearchCitation } from '../../types/agent.types.js';
 import type { ForecastContext, ForecastingStage } from '../../types/pipeline.types.js';
 import { agentLogger } from '../../utils/logger.js';
 
@@ -49,6 +50,14 @@ class AgentInvoker {
     }
 
     try {
+      // Check if agent uses web search
+      const usesWebSearch = this.usesWebSearch(agent);
+
+      if (usesWebSearch && config.webSearch.enabled) {
+        // Use Responses API with web search for evidence gathering
+        return await this.invokeWithWebSearch(agent, stage, context, startTime);
+      }
+
       // Render prompts
       const { systemPrompt, userPrompt } = this.renderPrompts(agent, stage, context);
 
@@ -57,14 +66,14 @@ class AgentInvoker {
         'Invoking agent'
       );
 
-      // Call LLM
+      // Call LLM with o4-mini model
       const llmResponse = await llmService.completeJSON<Record<string, unknown>>(
         systemPrompt,
         userPrompt,
         {
           temperature: options.temperature ?? agent.constraints.maxTokensOutput > 1000 ? 0.7 : 0.5,
           maxTokens: options.maxTokens ?? agent.constraints.maxTokensOutput,
-          model: 'gpt-4o-mini',
+          model: config.llm.model,
         }
       );
 
@@ -406,6 +415,188 @@ class AgentInvoker {
 
     // Default confidence
     return 0.7;
+  }
+
+  /**
+   * Check if an agent uses web search
+   */
+  private usesWebSearch(agent: AgentCard): boolean {
+    return agent.capabilities.actions.includes('web_search');
+  }
+
+  /**
+   * Invoke an agent with web search using Responses API
+   */
+  private async invokeWithWebSearch(
+    agent: AgentCard,
+    stage: ForecastingStage,
+    context: ForecastContext,
+    startTime: number
+  ): Promise<InvocationResult> {
+    const agentId = agent.id;
+
+    // Build the web search query for the game
+    const searchInput = this.buildWebSearchQuery(agent, context);
+
+    agentLogger.debug(
+      { agentId, stage, inputLength: searchInput.length },
+      'Invoking agent with web search'
+    );
+
+    try {
+      // Call the Responses API with web search
+      const response = await llmService.completeWithWebSearch(searchInput, {
+        model: 'o4-mini',
+        searchContextSize: config.webSearch.searchContextSize,
+        allowedDomains: config.webSearch.allowedDomains,
+        userLocation: config.webSearch.userLocation,
+      });
+
+      const latencyMs = Date.now() - startTime;
+
+      // Parse the output as JSON
+      let parsedOutput: Record<string, unknown>;
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = response.output_text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsedOutput = JSON.parse(jsonMatch[0]);
+        } else {
+          // Wrap text output in expected format
+          parsedOutput = {
+            evidenceItems: [{
+              description: response.output_text,
+              source: 'web_search',
+              relevance: 0.8,
+            }],
+            confidence: 0.7,
+          };
+        }
+      } catch {
+        parsedOutput = {
+          evidenceItems: [{
+            description: response.output_text,
+            source: 'web_search',
+            relevance: 0.8,
+          }],
+          confidence: 0.7,
+        };
+      }
+
+      // Build contribution with sources and citations
+      const contribution: AgentContribution = {
+        agentId,
+        agentName: agent.name,
+        output: parsedOutput,
+        confidence: this.extractConfidence(parsedOutput),
+        timestamp: new Date(),
+        latencyMs,
+        sources: response.sources,
+        citations: response.citations,
+      };
+
+      agentLogger.info(
+        {
+          agentId,
+          stage,
+          latencyMs,
+          sourcesCount: response.sources.length,
+          citationsCount: response.citations.length,
+          confidence: contribution.confidence,
+        },
+        'Web search agent invocation complete'
+      );
+
+      return {
+        contribution,
+        latencyMs,
+        success: true,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      agentLogger.error({ agentId, stage, error: errorMessage }, 'Web search agent invocation failed');
+      return this.errorResult(agentId, errorMessage, startTime);
+    }
+  }
+
+  /**
+   * Build web search query for a specific agent and game context
+   */
+  private buildWebSearchQuery(agent: AgentCard, context: ForecastContext): string {
+    const gameDate = context.gameTime.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+    if (agent.id === 'evidence-injury-analyzer') {
+      return `
+Search for the latest injury reports and player availability for the college football game:
+${context.awayTeam} @ ${context.homeTeam}
+
+Game Date: ${gameDate}
+
+Focus on:
+1. Key player injuries and their status (out, questionable, probable)
+2. Recent injury updates from official team sources
+3. Impact of any injuries on the game outcome
+4. Starting lineup changes due to injuries
+
+After searching, provide your analysis as JSON in this format:
+{
+  "evidenceItems": [
+    {
+      "type": "injury",
+      "player": "Player Name",
+      "team": "Team Name",
+      "status": "out|questionable|probable|healthy",
+      "position": "QB|RB|WR|etc",
+      "impact": "high|medium|low",
+      "description": "Brief description of the injury and impact",
+      "source": "Source name"
+    }
+  ],
+  "adjustmentFactor": 0.95,
+  "confidence": 0.8,
+  "reasoning": "Summary of injury impact on game prediction"
+}
+`.trim();
+    }
+
+    // Default evidence web search query
+    return `
+Search for the latest information about the college football game:
+${context.awayTeam} @ ${context.homeTeam}
+
+Game Date: ${gameDate}
+
+Focus on:
+1. Recent team performance and trends (last 3-5 games)
+2. Expert predictions and betting line analysis
+3. Key matchup factors (offensive vs defensive strengths)
+4. Weather conditions if relevant to the game
+5. Head-to-head history and rivalry factors
+6. Any breaking news that could affect the outcome
+
+After searching, provide your analysis as JSON in this format:
+{
+  "evidenceItems": [
+    {
+      "type": "performance|matchup|trend|expert|weather|rivalry",
+      "description": "Description of the evidence",
+      "team": "Which team this favors (or 'neutral')",
+      "impact": "high|medium|low",
+      "adjustmentDirection": "increase|decrease|none",
+      "adjustmentMagnitude": 0.02,
+      "source": "Source name"
+    }
+  ],
+  "netAdjustment": 0.03,
+  "confidence": 0.75,
+  "reasoning": "Summary of evidence and its impact on prediction"
+}
+`.trim();
   }
 
   /**

@@ -75,7 +75,7 @@ export function useForecasts() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<{ forecasts: ForecastContext[] }>('/forecasts');
+      const data = await apiFetch<{ forecasts: ForecastContext[] }>('/forecast');
       setForecasts(data.forecasts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch forecasts');
@@ -88,9 +88,9 @@ export function useForecasts() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<{ forecast: ForecastContext }>(`/forecasts/${forecastId}`);
-      setCurrentForecast(data.forecast);
-      return data.forecast;
+      const data = await apiFetch<{ context: ForecastContext }>(`/forecast/${forecastId}`);
+      setCurrentForecast(data.context);
+      return data.context;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch forecast');
       return null;
@@ -109,7 +109,7 @@ export function useForecasts() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<{ forecastId: string; taskId: string; status: string }>('/forecasts', {
+      const data = await apiFetch<{ forecastId: string; taskId: string; status: string }>('/forecast', {
         method: 'POST',
         body: JSON.stringify(params),
       });

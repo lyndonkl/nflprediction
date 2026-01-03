@@ -23,8 +23,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 2000,
-      maxTokensOutput: 1500,
-      timeoutMs: 30000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
       rateLimit: '10/minute',
     },
   },
@@ -47,8 +47,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 1500,
-      maxTokensOutput: 1000,
-      timeoutMs: 20000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
       rateLimit: '15/minute',
     },
   },
@@ -71,8 +71,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 2000,
-      maxTokensOutput: 2000,
-      timeoutMs: 45000,
+      maxTokensOutput: 8000,
+      timeoutMs: 90000,
       rateLimit: '5/minute',
     },
   },
@@ -85,7 +85,7 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     description: 'Analyzes injury reports and player availability to assess impact on game outcomes.',
     capabilities: {
       supportedStages: ['evidence_gathering'],
-      actions: ['data_extraction', 'impact_assessment'],
+      actions: ['web_search', 'data_extraction', 'impact_assessment'],
       inputTypes: ['game_context', 'injury_data'],
       outputTypes: ['evidence_list'],
     },
@@ -95,8 +95,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 1500,
-      maxTokensOutput: 1500,
-      timeoutMs: 30000,
+      maxTokensOutput: 8000,
+      timeoutMs: 90000,
       rateLimit: '10/minute',
     },
   },
@@ -119,8 +119,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 2500,
-      maxTokensOutput: 2000,
-      timeoutMs: 30000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
       rateLimit: '10/minute',
     },
   },
@@ -143,8 +143,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 2000,
-      maxTokensOutput: 1500,
-      timeoutMs: 30000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
       rateLimit: '10/minute',
     },
   },
@@ -167,8 +167,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 2000,
-      maxTokensOutput: 1500,
-      timeoutMs: 30000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
       rateLimit: '10/minute',
     },
   },
@@ -191,8 +191,8 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
     constraints: {
       maxTokensInput: 4000,
-      maxTokensOutput: 2000,
-      timeoutMs: 45000,
+      maxTokensOutput: 8000,
+      timeoutMs: 90000,
       rateLimit: '5/minute',
     },
   },
@@ -239,6 +239,8 @@ Return valid JSON with:
 - matches: Array of 3-5 reference classes, each with description, historicalSampleSize, relevanceScore (0-1), category
 - reasoning: Your thought process for selecting these classes
 - recommendedClass: Which class should anchor the base rate
+
+CRITICAL: All numbers must be numeric digits (e.g., 50, not "fifty"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 You are finding reference classes for a college football game to establish a base rate probability anchor.
@@ -308,6 +310,8 @@ Return valid JSON with:
 - sampleSize: Effective weighted sample size
 - sources: Array of strings describing which reference classes contributed most
 - reasoning: Step-by-step calculation explanation
+
+CRITICAL: All numbers must be numeric digits (e.g., 50, not "fifty"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 Calculate the base rate win probability for {{teamForProbability}} using the reference classes below.
@@ -391,6 +395,8 @@ Return valid JSON with:
   - timestamp: ISO date string
 - summary: Overall evidence assessment
 - keyFactors: Array of top 3-5 factors that matter most
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.75, not "zero point seven five"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 Gather evidence to update the probability estimate for {{homeTeam}} vs {{awayTeam}}.
@@ -473,6 +479,8 @@ Return valid JSON with:
   - timestamp: ISO date string
 - summary: Net injury impact assessment
 - keyFactors: Array of most impactful injury situations
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.85, not "eighty-five percent"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 Analyze injury impact for {{homeTeam}} vs {{awayTeam}}.
@@ -554,6 +562,8 @@ Return valid JSON with:
   - reasoning: Why this LR was chosen
 - posterior: Final probability after all updates (number 0-1)
 - updateChain: Human-readable string like "55% → (injury news, LR 0.9) → 52% → ..."
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.55, 1.2). Use proper JSON syntax - no word numbers.
 </output_format>`,
     userPromptTemplate: `<context>
 Apply Bayesian updates to the prior probability based on gathered evidence.
@@ -627,6 +637,8 @@ Return valid JSON with:
 - biases: Array of cognitive biases that may be affecting the analysis (strings)
 - alternativeScenarios: Array of 2-3 ways the unfavored outcome could happen (strings)
 - confidenceAdjustment: Suggested probability adjustment (number, usually small like -0.02)
+
+CRITICAL: All numbers must be numeric digits (e.g., -0.02, not "negative two percent"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 Challenge this forecast and identify potential weaknesses.
@@ -703,6 +715,8 @@ Return valid JSON with:
 - alternativeScenarios: Array of debiased interpretations (strings)
 - confidenceAdjustment: Suggested probability adjustment (number, usually small)
 - concerns: Array of specific reasoning steps that show bias (strings)
+
+CRITICAL: All numbers must be numeric digits (e.g., -0.01, 0.03). Use proper JSON syntax - no word numbers.
 </output_format>`,
     userPromptTemplate: `<context>
 Analyze this forecast for cognitive biases.
@@ -793,6 +807,8 @@ Return valid JSON with:
 - keyDrivers: Array of 3-5 most important factors (strings)
 - uncertaintySources: Array of strings describing where estimate is weakest
 - recommendation: One of "strong_buy", "buy", "neutral", "avoid"
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.65, not "sixty-five percent"). Use proper JSON syntax.
 </output_format>`,
     userPromptTemplate: `<context>
 Synthesize all inputs into a final probability estimate for the home team to win.
@@ -816,9 +832,9 @@ Synthesize all inputs into a final probability estimate for the home team to win
 </premortem_analysis>
 
 <key_evidence>
-{% for e in allEvidence[:7] %}
+{% for e in allEvidence %}{% if loop.index <= 7 %}
 <evidence>{{e.content}} ({{e.direction}})</evidence>
-{% endfor %}
+{% endif %}{% endfor %}
 </key_evidence>
 </input_data>
 

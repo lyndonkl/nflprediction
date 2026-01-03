@@ -90,4 +90,59 @@ export interface AgentContribution {
   confidence: number;
   timestamp: Date;
   latencyMs: number;
+  // Web search results (if applicable)
+  sources?: WebSearchSource[];
+  citations?: WebSearchCitation[];
+}
+
+/**
+ * Web search source from OpenAI Responses API
+ */
+export interface WebSearchSource {
+  url: string;
+  title: string;
+  snippet?: string;
+}
+
+/**
+ * Web search citation from OpenAI Responses API annotations
+ */
+export interface WebSearchCitation {
+  type: 'url_citation';
+  url: string;
+  title: string;
+  start_index: number;
+  end_index: number;
+}
+
+/**
+ * User location for web search relevance
+ */
+export interface WebSearchUserLocation {
+  type: 'approximate';
+  country: string;
+  timezone: string;
+}
+
+/**
+ * Web search configuration for agents
+ */
+export interface WebSearchConfig {
+  enabled: boolean;
+  searchContextSize: 'low' | 'medium' | 'high';
+  allowedDomains: string[];
+  userLocation: WebSearchUserLocation;
+}
+
+/**
+ * Result from OpenAI Responses API with web search
+ */
+export interface ResponsesAPIResult {
+  output_text: string;
+  sources: WebSearchSource[];
+  citations: WebSearchCitation[];
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+  };
 }

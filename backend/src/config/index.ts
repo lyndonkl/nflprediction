@@ -14,7 +14,7 @@ export const config = {
     provider: 'openai' as const,
     model: process.env.LLM_MODEL || 'gpt-4o-mini',
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
-    maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '2000', 10),
+    maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '16000', 10),
   },
 
   // Pipeline Settings
@@ -41,6 +41,29 @@ export const config = {
   oddsApi: {
     baseUrl: 'https://api.the-odds-api.com/v4',
     sport: 'americanfootball_ncaaf',
+  },
+
+  // Web Search Configuration for Responses API
+  webSearch: {
+    enabled: true,
+    searchContextSize: 'medium' as const, // low | medium | high
+    allowedDomains: [
+      'espn.com',
+      '247sports.com',
+      'sports-reference.com',
+      'collegefootballnews.com',
+      'si.com',
+      'cbssports.com',
+      'foxsports.com',
+      'bleacherreport.com',
+      'on3.com',
+      'rivals.com',
+    ],
+    userLocation: {
+      type: 'approximate' as const,
+      country: 'US',
+      timezone: 'America/New_York',
+    },
   },
 };
 
