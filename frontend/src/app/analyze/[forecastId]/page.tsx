@@ -11,7 +11,7 @@ import { ProbabilityJourney, buildProbabilitySteps } from '@/components/forecast
 import { EdgeCalculator } from '@/components/forecast/EdgeCalculator';
 import { CalmProgress } from '@/components/ui/Progress';
 import { Button, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
-import type { ForecastContext, ProbabilityStep } from '@/types';
+import type { ForecastContext, ProbabilityStep, ForecastingStage } from '@/types';
 
 // Sample forecast for development
 const SAMPLE_FORECAST: ForecastContext = {
@@ -76,6 +76,7 @@ export default function ForecastDetailPage() {
   const { subscribeTo, setActiveForecast } = useForecastActions();
 
   const [forecast, setForecast] = useState<ForecastContext | null>(null);
+  const [selectedStage, setSelectedStage] = useState<ForecastingStage | null>(null);
 
   useEffect(() => {
     // Subscribe to updates
@@ -174,8 +175,18 @@ export default function ForecastDetailPage() {
         currentStage={displayForecast.currentStage}
         stageStatuses={getStageStatuses(displayForecast, displayForecast.currentStage)}
         agentCounts={getAgentCounts(displayForecast)}
+        onStageClick={(stage) => setSelectedStage(selectedStage === stage ? null : stage)}
         compact={true}
       />
+
+      {/* Stage Details Panel (when a stage is selected) */}
+      {selectedStage && (
+        <StageDetailsPanel
+          stage={selectedStage}
+          context={displayForecast}
+          onClose={() => setSelectedStage(null)}
+        />
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -289,5 +300,137 @@ export default function ForecastDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Stage Details Panel - shows details for selected stage
+ */
+function StageDetailsPanel({
+  stage,
+  context,
+  onClose,
+}: {
+  stage: ForecastingStage;
+  context: ForecastContext;
+  onClose: () => void;
+}) {
+  const stageInfo: Record<ForecastingStage, { title: string; description: string }> = {
+    reference_class: {
+      title: 'Reference Class Analysis',
+      description: 'Finding similar historical matchups to establish base expectations',
+    },
+    base_rate: {
+      title: 'Base Rate Calculation',
+      description: 'Computing the starting probability from historical reference classes',
+    },
+    fermi_decomposition: {
+      title: 'Fermi Decomposition',
+      description: 'Breaking down the question into independent sub-questions',
+    },
+    evidence_gathering: {
+      title: 'Evidence Gathering',
+      description: 'Collecting current information about injuries, weather, trends, etc.',
+    },
+    bayesian_update: {
+      title: 'Bayesian Update',
+      description: 'Updating probability estimates using collected evidence',
+    },
+    premortem: {
+      title: 'Premortem Analysis',
+      description: 'Identifying potential biases and blind spots in the analysis',
+    },
+    synthesis: {
+      title: 'Synthesis',
+      description: 'Combining all inputs to generate the final probability estimate',
+    },
+    calibration: {
+      title: 'Calibration',
+      description: 'Logging prediction for future accuracy tracking',
+    },
+  };
+
+  const info = stageInfo[stage];
+  const contributions = context.agentContributions?.[stage] || [];
+
+  // Get stage-specific data
+  const getStageData = () => {
+    switch (stage) {
+      case 'reference_class':
+        return context.referenceClasses;
+      case 'base_rate':
+        return { baseRate: context.baseRate, confidence: context.baseRateConfidence };
+      case 'fermi_decomposition':
+        return {
+          subQuestions: context.fermiSubQuestions,
+          structuralEstimate: context.fermiStructuralEstimate,
+          reconciliation: context.fermiReconciliation,
+        };
+      case 'evidence_gathering':
+        return context.evidence;
+      case 'bayesian_update':
+        return { updates: context.bayesianUpdates, posterior: context.posteriorProbability };
+      case 'premortem':
+        return { concerns: context.premortermConcerns, biases: context.biasFlags };
+      case 'synthesis':
+        return {
+          finalProbability: context.finalProbability,
+          confidenceInterval: context.confidenceInterval,
+          recommendation: context.recommendation,
+          keyDrivers: context.keyDrivers,
+        };
+      default:
+        return null;
+    }
+  };
+
+  const stageData = getStageData();
+
+  return (
+    <Card className="border-blue-200 bg-blue-50/50">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <div>
+          <CardTitle className="text-base">{info.title}</CardTitle>
+          <p className="text-sm text-slate-500">{info.description}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 p-1"
+          aria-label="Close stage details"
+        >
+          <span className="text-xl">&times;</span>
+        </button>
+      </CardHeader>
+      <CardContent>
+        {/* Agent contributions */}
+        {contributions.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-2">Agents ({contributions.length})</h4>
+            <div className="space-y-2">
+              {contributions.map((c, i) => (
+                <div key={i} className="flex items-center justify-between text-sm p-2 bg-white rounded">
+                  <span className="text-slate-700">{c.agentName || c.agentId}</span>
+                  <span className="text-slate-500">{c.latencyMs}ms</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stage-specific data */}
+        {stageData && (
+          <div>
+            <h4 className="text-sm font-medium text-slate-700 mb-2">Output</h4>
+            <pre className="text-xs bg-white p-3 rounded overflow-auto max-h-48 text-slate-600">
+              {JSON.stringify(stageData, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {!contributions.length && !stageData && (
+          <p className="text-sm text-slate-500 italic">No data available for this stage yet</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

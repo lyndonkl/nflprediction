@@ -51,7 +51,7 @@ class WSBroadcaster {
       forecastId,
       stage,
       status: result.status,
-      output: result.output,
+      outputs: result.output,
       processingTimeMs: result.processingTimeMs,
       timestamp: new Date(),
     });

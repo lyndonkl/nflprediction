@@ -218,13 +218,28 @@ class StageExecutor {
         break;
 
       case 'synthesis':
+        // Handle finalProbability as number or string
+        let finalProb: number | undefined;
         if (typeof record.finalProbability === 'number') {
+          finalProb = record.finalProbability;
+        } else if (typeof record.finalProbability === 'string') {
+          finalProb = parseFloat(record.finalProbability);
+        }
+
+        if (finalProb !== undefined && !isNaN(finalProb)) {
+          // Clamp probability to valid range [0, 1]
+          finalProb = Math.max(0, Math.min(1, finalProb));
           contextManager.finalize(
             forecastId,
-            record.finalProbability,
-            (record.confidenceInterval as [number, number]) || [record.finalProbability - 0.1, record.finalProbability + 0.1],
+            finalProb,
+            (record.confidenceInterval as [number, number]) || [finalProb - 0.1, finalProb + 0.1],
             (record.recommendation as string) || 'neutral',
             (record.keyDrivers as string[]) || []
+          );
+        } else {
+          pipelineLogger.warn(
+            { forecastId, finalProbability: record.finalProbability },
+            'Synthesis stage missing or invalid finalProbability'
           );
         }
         break;
