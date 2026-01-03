@@ -53,6 +53,30 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     },
   },
 
+  // Stage 2.5: Fermi Decomposition
+  {
+    id: 'fermi-decomposer',
+    name: 'Fermi Decomposer',
+    version: '1.0.0',
+    description: 'Breaks down the prediction into independent sub-questions using Fermi estimation for structural probability checks.',
+    capabilities: {
+      supportedStages: ['fermi_decomposition'],
+      actions: ['decomposition', 'probability_estimation', 'structural_analysis'],
+      inputTypes: ['game_context', 'base_rate'],
+      outputTypes: ['sub_questions', 'structural_estimate'],
+    },
+    coherenceProfile: {
+      semanticDomain: 'analytical_reasoning',
+      frequencyTier: 'gamma',
+    },
+    constraints: {
+      maxTokensInput: 2000,
+      maxTokensOutput: 8000,
+      timeoutMs: 60000,
+      rateLimit: '10/minute',
+    },
+  },
+
   // Stage 3: Evidence Gathering (Web Search)
   {
     id: 'evidence-web-search',
@@ -98,6 +122,30 @@ export const DEFAULT_AGENTS: AgentCard[] = [
       maxTokensOutput: 8000,
       timeoutMs: 90000,
       rateLimit: '10/minute',
+    },
+  },
+
+  // Stage 3: Evidence Gathering (Contrarian Search)
+  {
+    id: 'contrarian-evidence-searcher',
+    name: 'Contrarian Evidence Searcher',
+    version: '1.0.0',
+    description: 'Explicitly searches for disconfirming evidence to combat confirmation bias. Looks for reasons the underdog could win.',
+    capabilities: {
+      supportedStages: ['evidence_gathering'],
+      actions: ['web_search', 'contrarian_analysis', 'weakness_identification'],
+      inputTypes: ['game_context', 'base_rate'],
+      outputTypes: ['evidence_list'],
+    },
+    coherenceProfile: {
+      semanticDomain: 'adversarial_analysis',
+      frequencyTier: 'gamma',
+    },
+    constraints: {
+      maxTokensInput: 2000,
+      maxTokensOutput: 8000,
+      timeoutMs: 90000,
+      rateLimit: '5/minute',
     },
   },
 
@@ -344,6 +392,95 @@ Provide your response in valid JSON format.
     outputFormat: 'json',
   },
 
+  'fermi-decomposer': {
+    templateId: 'fermi_decomposition_default',
+    stage: 'fermi_decomposition',
+    name: 'Fermi Decomposer',
+    description: 'Breaks down predictions into independent sub-questions',
+    systemPrompt: `<role>
+You are an expert at Fermi estimation and analytical decomposition. You break complex predictions into independent, estimable components to cross-check probability estimates and identify hidden assumptions.
+</role>
+
+<task>
+Apply FERMI DECOMPOSITION to the game prediction. This technique breaks "Will Team A beat Team B?" into independent sub-questions whose combined probability can be compared against the base rate.
+</task>
+
+<methodology>
+1. IDENTIFY 3-5 independent conditions that must ALL be true for the home team to win
+2. For each sub-question:
+   - State the question clearly
+   - Estimate the probability (0-1)
+   - Rate your confidence (0-1)
+   - Explain your reasoning
+3. CALCULATE the structural estimate: multiply all sub-question probabilities
+4. COMPARE to the base rate:
+   - If structural estimate differs significantly (>10%), investigate why
+   - Either adjust sub-questions or note the discrepancy
+5. RECONCILE by explaining any tension between structural and base rate estimates
+
+Typical sub-questions for football:
+- Can home offense score 24+ points against this defense?
+- Can home defense hold opponent under 28 points?
+- Will home team avoid critical turnovers (2+ fewer than opponent)?
+- Will special teams not lose the game (no blocked kicks, muffed punts)?
+- Will home team execute in critical situations (red zone, 3rd down)?
+</methodology>
+
+<constraints>
+- Sub-questions should be as INDEPENDENT as possible
+- Each probability should have genuine uncertainty (not all 0.9 or 0.5)
+- Structural estimate will naturally be lower than individual probabilities (multiplication)
+- If structural << base rate, your sub-questions may be too pessimistic or not independent
+- If structural >> base rate, your sub-questions may be too optimistic
+</constraints>
+
+<output_format>
+Return valid JSON with:
+- subQuestions: Array of sub-question objects, each with:
+  - question: The sub-question (string)
+  - probability: Estimated probability (number 0-1)
+  - confidence: Confidence in the estimate (number 0-1)
+  - reasoning: Brief justification (string)
+- structuralEstimate: Product of all sub-question probabilities (number)
+- baseRateComparison: How structural estimate compares to base rate (string)
+- reconciliation: Explanation of any discrepancy (string)
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.65, not "sixty-five percent"). Use proper JSON syntax.
+</output_format>`,
+    userPromptTemplate: `<context>
+Decompose the prediction for {{homeTeam}} vs {{awayTeam}} into independent sub-questions.
+</context>
+
+<input_data>
+<game>
+  <home_team>{{homeTeam}}</home_team>
+  <away_team>{{awayTeam}}</away_team>
+  <base_rate>{{baseRate}}</base_rate>
+</game>
+{% if referenceClasses %}
+<reference_context>
+{% for rc in referenceClasses %}
+  <class>{{rc.description}} (relevance: {{rc.relevanceScore}})</class>
+{% endfor %}
+</reference_context>
+{% endif %}
+</input_data>
+
+<instructions>
+Think step-by-step:
+1. What must happen for {{homeTeam}} to win this game?
+2. Break this into 3-5 independent conditions
+3. Estimate the probability of each condition
+4. Multiply to get structural estimate
+5. Compare to base rate and reconcile
+
+Provide your response in valid JSON format.
+</instructions>`,
+    requiredVariables: ['homeTeam', 'awayTeam', 'baseRate'],
+    optionalVariables: ['referenceClasses'],
+    outputFormat: 'json',
+  },
+
   'evidence-web-search': {
     templateId: 'evidence_web_search_default',
     stage: 'evidence_gathering',
@@ -511,6 +648,90 @@ Provide your response in valid JSON format.
 </instructions>`,
     requiredVariables: ['homeTeam', 'awayTeam', 'gameId', 'baseRate'],
     optionalVariables: ['injuryData'],
+    outputFormat: 'json',
+  },
+
+  'contrarian-evidence-searcher': {
+    templateId: 'evidence_contrarian_default',
+    stage: 'evidence_gathering',
+    name: 'Contrarian Evidence Searcher',
+    description: 'Explicitly searches for disconfirming evidence',
+    systemPrompt: `<role>
+You are a contrarian analyst who deliberately looks for reasons the consensus prediction could be wrong. Your job is to combat confirmation bias by actively seeking evidence that supports the underdog or challenges the favorite.
+</role>
+
+<task>
+Search for DISCONFIRMING EVIDENCE - information that challenges the current probability estimate. If the home team is favored, look for reasons the away team could win. This counters the natural tendency toward confirmation bias.
+</task>
+
+<methodology>
+1. IDENTIFY the underdog (team with lower win probability)
+2. SEARCH for evidence supporting the underdog:
+   - "Why [underdog] could beat [favorite]"
+   - "[favorite] weaknesses vulnerabilities recent struggles"
+   - "[underdog] upset history similar games"
+   - "[favorite] loses to [underdog type] teams"
+3. EVALUATE each contrarian argument:
+   - Is this a genuine concern or wishful thinking?
+   - How significant is this factor?
+   - Is there counter-evidence?
+4. SUMMARIZE the strongest contrarian case
+5. SUGGEST likelihood ratio adjustments if evidence is compelling
+</methodology>
+
+<constraints>
+- This is NOT about being negative - it's about avoiding confirmation bias
+- Look for GENUINE reasons, not contrived arguments
+- Strong contrarian evidence should affect the forecast; weak arguments should be noted but not overweighted
+- If you find nothing compelling, say so - don't manufacture concerns
+- Focus on factors NOT already captured in regular evidence gathering
+</constraints>
+
+<output_format>
+Return valid JSON with:
+- evidenceItems: Array of contrarian evidence objects, each with:
+  - type: "contrarian_statistical" | "contrarian_matchup" | "contrarian_situational" | "contrarian_historical"
+  - source: Source of the information
+  - content: Brief description of the contrarian evidence
+  - relevance: Number 0-1
+  - direction: "favors_away" | "weakens_favorite" | "neutral"
+  - suggestedLikelihoodRatio: Number (< 1 if evidence favors away team)
+  - timestamp: ISO date string
+- summary: Overall contrarian assessment
+- keyFactors: Array of top 3 reasons the underdog could win
+- contrariansStrength: "weak" | "moderate" | "strong"
+
+CRITICAL: All numbers must be numeric digits (e.g., 0.85, not "eighty-five"). Use proper JSON syntax.
+</output_format>`,
+    userPromptTemplate: `<context>
+Search for contrarian evidence - reasons the current favorite could lose.
+Current probability for {{homeTeam}} win: {{baseRate | round(2)}}
+The {% if baseRate > 0.5 %}underdog is {{awayTeam}}{% else %}underdog is {{homeTeam}}{% endif %}.
+</context>
+
+<input_data>
+<game_info>
+  <game_id>{{gameId}}</game_id>
+  <home_team>{{homeTeam}}</home_team>
+  <away_team>{{awayTeam}}</away_team>
+  <current_probability>{{baseRate}}</current_probability>
+</game_info>
+</input_data>
+
+<instructions>
+Think like a contrarian:
+1. Who is currently favored? What's the consensus view?
+2. What could make that consensus WRONG?
+3. What are the underdog's genuine strengths?
+4. What are the favorite's hidden weaknesses?
+5. Are there historical patterns of upsets in similar situations?
+
+Focus on finding legitimate disconfirming evidence, not just being negative.
+
+Provide your response in valid JSON format.
+</instructions>`,
+    requiredVariables: ['homeTeam', 'awayTeam', 'gameId', 'baseRate'],
+    optionalVariables: [],
     outputFormat: 'json',
   },
 

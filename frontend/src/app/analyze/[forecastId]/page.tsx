@@ -29,6 +29,13 @@ const SAMPLE_FORECAST: ForecastContext = {
   ],
   baseRate: 0.55,
   baseRateConfidence: [0.42, 0.68],
+  fermiSubQuestions: [
+    { question: 'Can Georgia offense score 24+ points?', probability: 0.75, confidence: 'high', reasoning: 'Georgia averages 32 PPG at home' },
+    { question: 'Can Georgia defense hold Alabama under 28?', probability: 0.65, confidence: 'medium', reasoning: 'Top 5 defense but Alabama has elite weapons' },
+    { question: 'Will Georgia avoid critical turnovers?', probability: 0.80, confidence: 'medium', reasoning: 'Georgia has low turnover rate this season' },
+  ],
+  fermiStructuralEstimate: 0.39, // 0.75 * 0.65 * 0.80
+  fermiReconciliation: 'Structural estimate (39%) is lower than base rate (55%), suggesting sub-questions may be overly pessimistic or not fully independent',
   evidence: [
     { type: 'injury', source: 'ESPN', content: 'Alabama starting RB questionable with ankle', relevance: 0.7, direction: 'favors_home', suggestedLikelihoodRatio: 1.1, timestamp: new Date().toISOString() },
     { type: 'weather', source: 'Weather.com', content: 'Clear conditions, 55°F expected', relevance: 0.3, direction: 'neutral', timestamp: new Date().toISOString() },
@@ -50,6 +57,7 @@ const SAMPLE_FORECAST: ForecastContext = {
   agentContributions: {
     reference_class: [{ agentId: 'reference-class-historical', agentName: 'Historical Matchup Finder', output: {}, confidence: 0.8, timestamp: new Date().toISOString(), latencyMs: 2500 }],
     base_rate: [{ agentId: 'base-rate-calculator', agentName: 'Base Rate Calculator', output: {}, confidence: 0.75, timestamp: new Date().toISOString(), latencyMs: 1800 }],
+    fermi_decomposition: [{ agentId: 'fermi-decomposer', agentName: 'Fermi Decomposer', output: {}, confidence: 0.7, timestamp: new Date().toISOString(), latencyMs: 2200 }],
     evidence_gathering: [{ agentId: 'evidence-web-search', agentName: 'Web Search Evidence', output: {}, confidence: 0.7, timestamp: new Date().toISOString(), latencyMs: 3200 }],
     bayesian_update: [{ agentId: 'bayesian-updater', agentName: 'Bayesian Updater', output: {}, confidence: 0.8, timestamp: new Date().toISOString(), latencyMs: 2100 }],
     premortem: [{ agentId: 'devils-advocate', agentName: "Devil's Advocate", output: {}, confidence: 0.75, timestamp: new Date().toISOString(), latencyMs: 2400 }],
@@ -149,7 +157,7 @@ export default function ForecastDetailPage() {
       </div>
 
       {/* Progress indicator (if running) */}
-      {isRunning && (
+      {isRunning && displayForecast.currentStage && (
         <Card>
           <CardContent>
             <CalmProgress

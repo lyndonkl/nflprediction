@@ -1,9 +1,11 @@
+# Development Docker Compose with hot-reload
+# Usage: docker compose -f docker-compose.dev.yml up --build
+
 services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-      target: builder
+      dockerfile: Dockerfile.dev
     ports:
       - "3001:3001"
     environment:
@@ -12,22 +14,27 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend/src:/app/src
-    command: npm run dev
+      - ./backend/src:/app/src:delegated
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-      target: deps
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
       - NEXT_PUBLIC_WS_URL=ws://localhost:3001/ws
+      - WATCHPACK_POLLING=true
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-    command: npm run dev
+      - ./frontend/src:/app/src:delegated
+      - ./frontend/public:/app/public:delegated
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy

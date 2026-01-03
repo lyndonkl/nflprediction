@@ -73,6 +73,7 @@ function getPhaseForStage(stage: string): string {
   const phaseMap: Record<string, string> = {
     reference_class: 'Research',
     base_rate: 'Research',
+    fermi_decomposition: 'Research',
     evidence_gathering: 'Analysis',
     bayesian_update: 'Analysis',
     premortem: 'Validation',

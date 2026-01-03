@@ -6,11 +6,12 @@ import type {
 } from './forecast.types.js';
 
 /**
- * The 7 forecasting stages in the superforecaster pipeline
+ * The 8 forecasting stages in the superforecaster pipeline
  */
 export type ForecastingStage =
   | 'reference_class'
   | 'base_rate'
+  | 'fermi_decomposition'
   | 'evidence_gathering'
   | 'bayesian_update'
   | 'premortem'
@@ -23,6 +24,7 @@ export type ForecastingStage =
 export const FORECASTING_STAGES: ForecastingStage[] = [
   'reference_class',
   'base_rate',
+  'fermi_decomposition',
   'evidence_gathering',
   'bayesian_update',
   'premortem',
@@ -36,12 +38,23 @@ export const FORECASTING_STAGES: ForecastingStage[] = [
 export const STAGE_INFO: Record<ForecastingStage, { name: string; shortName: string; description: string }> = {
   reference_class: { name: 'Reference Class', shortName: 'RefClass', description: 'Find similar historical matchups' },
   base_rate: { name: 'Base Rate', shortName: 'BaseRate', description: 'Calculate starting probability' },
+  fermi_decomposition: { name: 'Fermi Decomposition', shortName: 'Fermi', description: 'Break into sub-questions' },
   evidence_gathering: { name: 'Evidence Gathering', shortName: 'Evidence', description: 'Gather current information' },
   bayesian_update: { name: 'Bayesian Update', shortName: 'Bayesian', description: 'Update probability with evidence' },
   premortem: { name: 'Premortem', shortName: 'Premortem', description: 'Challenge assumptions' },
   synthesis: { name: 'Synthesis', shortName: 'Synthesis', description: 'Generate final estimate' },
   calibration: { name: 'Calibration', shortName: 'Calibrate', description: 'Log for accuracy tracking' },
 };
+
+/**
+ * Fermi sub-question for decomposition
+ */
+export interface FermiSubQuestion {
+  question: string;
+  probability: number;
+  confidence: number;
+  reasoning: string;
+}
 
 /**
  * Task lifecycle states (A2A-inspired)
@@ -143,6 +156,11 @@ export interface ForecastContext {
   baseRateConfidence: [number, number] | null;
   baseRateSampleSize: number | null;
 
+  // Fermi decomposition outputs
+  fermiSubQuestions: FermiSubQuestion[];
+  fermiStructuralEstimate: number | null;
+  fermiReconciliation: string | null;
+
   evidence: EvidenceItem[];
   evidenceSummary: string | null;
 
@@ -187,6 +205,9 @@ export function createForecastContext(
     baseRate: null,
     baseRateConfidence: null,
     baseRateSampleSize: null,
+    fermiSubQuestions: [],
+    fermiStructuralEstimate: null,
+    fermiReconciliation: null,
     evidence: [],
     evidenceSummary: null,
     bayesianUpdates: [],
@@ -201,6 +222,7 @@ export function createForecastContext(
     agentContributions: {
       reference_class: [],
       base_rate: [],
+      fermi_decomposition: [],
       evidence_gathering: [],
       bayesian_update: [],
       premortem: [],
@@ -210,6 +232,7 @@ export function createForecastContext(
     processingTimes: {
       reference_class: 0,
       base_rate: 0,
+      fermi_decomposition: 0,
       evidence_gathering: 0,
       bayesian_update: 0,
       premortem: 0,

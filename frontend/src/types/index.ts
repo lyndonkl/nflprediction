@@ -41,6 +41,12 @@ export interface ForecastContext {
   referenceClasses: ReferenceClass[];
   baseRate: number | null;
   baseRateConfidence: [number, number] | null;
+
+  // Fermi decomposition outputs
+  fermiSubQuestions: FermiSubQuestion[];
+  fermiStructuralEstimate: number | null;
+  fermiReconciliation: string | null;
+
   evidence: EvidenceItem[];
   bayesianUpdates: BayesianUpdate[];
   posteriorProbability: number | null;
@@ -58,6 +64,7 @@ export interface ForecastContext {
 export type ForecastingStage =
   | 'reference_class'
   | 'base_rate'
+  | 'fermi_decomposition'
   | 'evidence_gathering'
   | 'bayesian_update'
   | 'premortem'
@@ -87,6 +94,21 @@ export interface BayesianUpdate {
   prior: number;
   posterior: number;
   reasoning: string;
+}
+
+// Fermi decomposition types
+export interface FermiSubQuestion {
+  question: string;
+  probability: number;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
+export interface FermiDecomposition {
+  subQuestions: FermiSubQuestion[];
+  structuralEstimate: number;
+  baseRateComparison: string;
+  reconciliation: string;
 }
 
 export interface AgentContribution {
@@ -143,7 +165,7 @@ export const PIPELINE_PHASES: PipelinePhase[] = [
     id: 'research',
     name: 'Research',
     description: 'Find historical context',
-    stages: ['reference_class', 'base_rate'],
+    stages: ['reference_class', 'base_rate', 'fermi_decomposition'],
   },
   {
     id: 'analysis',
@@ -175,6 +197,11 @@ export const STAGE_INFO: Record<ForecastingStage, { name: string; shortName: str
     name: 'Base Rate',
     shortName: 'BaseRate',
     description: 'Calculate historical win probability',
+  },
+  fermi_decomposition: {
+    name: 'Fermi Decomposition',
+    shortName: 'Fermi',
+    description: 'Break into sub-questions',
   },
   evidence_gathering: {
     name: 'Evidence Gathering',

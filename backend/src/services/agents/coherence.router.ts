@@ -31,6 +31,7 @@ const DOMAIN_KEYWORDS: Record<string, string[]> = {
 const STAGE_DOMAIN_AFFINITY: Record<ForecastingStage, string[]> = {
   reference_class: ['historical', 'statistical'],
   base_rate: ['statistical', 'historical'],
+  fermi_decomposition: ['analytical', 'statistical'],
   evidence_gathering: ['news', 'injury', 'analytical'],
   bayesian_update: ['analytical', 'statistical'],
   premortem: ['critical', 'analytical'],
@@ -178,6 +179,7 @@ class CoherenceRouter {
       quick: {
         reference_class: 1,
         base_rate: 1,
+        fermi_decomposition: 0,
         evidence_gathering: 1,
         bayesian_update: 1,
         premortem: 0,
@@ -187,6 +189,7 @@ class CoherenceRouter {
       balanced: {
         reference_class: 1,
         base_rate: 1,
+        fermi_decomposition: 1,
         evidence_gathering: 2,
         bayesian_update: 1,
         premortem: 1,
@@ -196,7 +199,8 @@ class CoherenceRouter {
       deep: {
         reference_class: 1,
         base_rate: 1,
-        evidence_gathering: 2,
+        fermi_decomposition: 1,
+        evidence_gathering: 3,
         bayesian_update: 1,
         premortem: 2,
         synthesis: 1,

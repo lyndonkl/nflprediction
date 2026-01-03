@@ -15,6 +15,7 @@ export const PRESETS: PresetDefinition[] = [
     stages: {
       reference_class: ['reference-class-historical'],
       base_rate: ['base-rate-calculator'],
+      fermi_decomposition: [], // Skip for quick
       evidence_gathering: [], // Skip
       bayesian_update: [], // Skip
       premortem: [], // Skip
@@ -27,11 +28,12 @@ export const PRESETS: PresetDefinition[] = [
     name: 'Balanced',
     description: 'Recommended analysis with core agents (~2 minutes)',
     recommended: true,
-    agentCount: 5,
+    agentCount: 6,
     estimatedTimeSeconds: 120,
     stages: {
       reference_class: ['reference-class-historical'],
       base_rate: ['base-rate-calculator'],
+      fermi_decomposition: ['fermi-decomposer'],
       evidence_gathering: ['evidence-web-search'],
       bayesian_update: ['bayesian-updater'],
       premortem: ['devils-advocate'],
@@ -42,13 +44,14 @@ export const PRESETS: PresetDefinition[] = [
   {
     id: 'deep',
     name: 'Deep Research',
-    description: 'Comprehensive analysis with all agents (~5 minutes)',
-    agentCount: 8,
+    description: 'Comprehensive analysis with all agents including contrarian search (~5 minutes)',
+    agentCount: 10,
     estimatedTimeSeconds: 300,
     stages: {
       reference_class: ['reference-class-historical'],
       base_rate: ['base-rate-calculator'],
-      evidence_gathering: ['evidence-web-search', 'evidence-injury-analyzer'],
+      fermi_decomposition: ['fermi-decomposer'],
+      evidence_gathering: ['evidence-web-search', 'evidence-injury-analyzer', 'contrarian-evidence-searcher'],
       bayesian_update: ['bayesian-updater'],
       premortem: ['devils-advocate', 'bias-detector'],
       synthesis: ['synthesis-coordinator'],
@@ -103,6 +106,7 @@ export function buildPipelineConfig(presetId: string): import('../types/pipeline
   const stages: Record<ForecastingStage, import('../types/pipeline.types.js').StageConfig> = {
     reference_class: { enabled: true, parallelExecution: false, agents: [] },
     base_rate: { enabled: true, parallelExecution: false, agents: [] },
+    fermi_decomposition: { enabled: true, parallelExecution: false, agents: [] },
     evidence_gathering: { enabled: true, parallelExecution: true, agents: [] },
     bayesian_update: { enabled: true, parallelExecution: false, agents: [] },
     premortem: { enabled: true, parallelExecution: true, agents: [] },

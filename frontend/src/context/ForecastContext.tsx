@@ -58,9 +58,11 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
   }, [updateForecast]);
 
   const handleStageComplete = useCallback((forecastId: string, stage: ForecastingStage, outputs: unknown) => {
-    // Stage complete - could update specific stage outputs here
-    console.log('Stage complete:', forecastId, stage, outputs);
-  }, []);
+    // Merge stage outputs into the forecast context
+    if (outputs && typeof outputs === 'object') {
+      updateForecast(forecastId, outputs as Partial<ForecastContextType>);
+    }
+  }, [updateForecast]);
 
   const handlePipelineComplete = useCallback((forecastId: string, context: ForecastContextType) => {
     setForecasts((prev) => {

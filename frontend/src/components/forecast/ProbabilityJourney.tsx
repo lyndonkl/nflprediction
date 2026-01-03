@@ -289,26 +289,24 @@ function StepCard({
     ? step.probability - previousProbability
     : 0;
 
-  const DirectionIcon = step.direction === 'up'
-    ? TrendingUp
-    : step.direction === 'down'
-    ? TrendingDown
-    : Minus;
-
   return (
     <div className={clsx('relative pb-4', !isLast && 'mb-2')}>
-      {/* Probability marker */}
-      <div className="absolute -left-5 top-1">
+      {/* Probability marker - positioned to align with vertical line */}
+      <div className="absolute -left-8 top-1">
         <div className={clsx(
-          'w-6 h-6 rounded-full flex items-center justify-center',
+          'w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm',
           step.direction === 'up' ? 'bg-green-100' :
-          step.direction === 'down' ? 'bg-red-100' : 'bg-slate-100'
+          step.direction === 'down' ? 'bg-red-100' : 'bg-blue-500'
         )}>
-          <DirectionIcon className={clsx(
-            'w-4 h-4',
-            step.direction === 'up' ? 'text-green-600' :
-            step.direction === 'down' ? 'text-red-600' : 'text-slate-500'
-          )} />
+          {step.direction === 'up' && (
+            <TrendingUp className="w-3 h-3 text-green-600" />
+          )}
+          {step.direction === 'down' && (
+            <TrendingDown className="w-3 h-3 text-red-600" />
+          )}
+          {step.direction === 'neutral' && (
+            <div className="w-2 h-2 rounded-full bg-white" />
+          )}
         </div>
       </div>
 

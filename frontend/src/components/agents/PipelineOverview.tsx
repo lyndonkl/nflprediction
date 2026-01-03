@@ -109,6 +109,7 @@ export function getStageStatuses(
   const stages: ForecastingStage[] = [
     'reference_class',
     'base_rate',
+    'fermi_decomposition',
     'evidence_gathering',
     'bayesian_update',
     'premortem',
@@ -119,6 +120,7 @@ export function getStageStatuses(
   const statuses: Record<ForecastingStage, StageStatus> = {
     reference_class: 'pending',
     base_rate: 'pending',
+    fermi_decomposition: 'pending',
     evidence_gathering: 'pending',
     bayesian_update: 'pending',
     premortem: 'pending',
@@ -156,6 +158,7 @@ export function getAgentCounts(
   const counts: Record<ForecastingStage, number> = {
     reference_class: 0,
     base_rate: 0,
+    fermi_decomposition: 0,
     evidence_gathering: 0,
     bayesian_update: 0,
     premortem: 0,

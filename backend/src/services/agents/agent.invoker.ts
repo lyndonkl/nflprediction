@@ -198,6 +198,12 @@ class AgentInvoker {
         baseContext.referenceClasses = this.extractReferenceClasses(previousOutputs);
         break;
 
+      case 'fermi_decomposition':
+        // Fermi decomposition needs base rate and reference classes
+        baseContext.baseRate = this.extractBaseRate(previousOutputs);
+        baseContext.referenceClasses = this.extractReferenceClasses(previousOutputs);
+        break;
+
       case 'evidence_gathering':
         // Evidence gathering needs base rate
         baseContext.baseRate = this.extractBaseRate(previousOutputs);
@@ -227,6 +233,9 @@ class AgentInvoker {
         baseContext.premortermConcerns = this.extractConcerns(previousOutputs);
         baseContext.biasFlags = this.extractBiases(previousOutputs);
         baseContext.allEvidence = this.extractEvidence(previousOutputs);
+        // Include Fermi decomposition outputs for reconciliation
+        baseContext.fermiSubQuestions = this.extractFermiSubQuestions(previousOutputs);
+        baseContext.fermiStructuralEstimate = this.extractFermiStructuralEstimate(previousOutputs);
         break;
 
       case 'calibration':
@@ -333,6 +342,50 @@ class AgentInvoker {
       return allBiases;
     }
     return [];
+  }
+
+  /**
+   * Extract Fermi sub-questions from previous outputs
+   */
+  private extractFermiSubQuestions(outputs: Record<string, unknown>): unknown[] {
+    const fermiOutput = outputs['fermi_decomposition'];
+    if (Array.isArray(fermiOutput) && fermiOutput.length > 0) {
+      const firstOutput = fermiOutput[0] as Record<string, unknown>;
+      if (Array.isArray(firstOutput?.subQuestions)) {
+        return firstOutput.subQuestions;
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Extract Fermi structural estimate from previous outputs
+   */
+  private extractFermiStructuralEstimate(outputs: Record<string, unknown>): number | null {
+    const fermiOutput = outputs['fermi_decomposition'];
+    if (Array.isArray(fermiOutput) && fermiOutput.length > 0) {
+      const firstOutput = fermiOutput[0] as Record<string, unknown>;
+      if (typeof firstOutput?.structuralEstimate === 'number') {
+        return firstOutput.structuralEstimate;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Clamp likelihood ratio to prevent overconfident updates
+   * Sports outcomes have high variance, so we bound LRs to 0.5-2.0
+   * This means any single piece of evidence can at most double/halve the odds
+   */
+  clampLikelihoodRatio(lr: number, min: number = 0.5, max: number = 2.0): number {
+    const clamped = Math.max(min, Math.min(max, lr));
+    if (clamped !== lr) {
+      agentLogger.debug(
+        { original: lr, clamped, min, max },
+        'Likelihood ratio clamped to bounds'
+      );
+    }
+    return clamped;
   }
 
   /**
