@@ -176,28 +176,59 @@ class StageExecutor {
         break;
 
       case 'base_rate':
-        if (typeof record.baseRate === 'number') {
+        // Agent returns 'probability', not 'baseRate'
+        const baseRateValue = (record.probability as number) ?? (record.baseRate as number);
+        if (typeof baseRateValue === 'number') {
           contextManager.updateBaseRate(
             forecastId,
-            record.baseRate,
-            (record.confidenceInterval as [number, number]) || [record.baseRate - 0.1, record.baseRate + 0.1],
+            baseRateValue,
+            (record.confidenceInterval as [number, number]) || [baseRateValue - 0.1, baseRateValue + 0.1],
             (record.sampleSize as number) || 0
           );
         }
         break;
 
+      case 'fermi_decomposition':
+        // Agent returns subQuestions, structuralEstimate, reconciliation
+        if (Array.isArray(record.subQuestions)) {
+          contextManager.updateFermiDecomposition(
+            forecastId,
+            record.subQuestions as Array<{ question: string; probability: number; confidence: number; reasoning: string }>,
+            (record.structuralEstimate as number) ?? null,
+            (record.reconciliation as string) ?? (record.baseRateComparison as string) ?? null
+          );
+        }
+        break;
+
       case 'evidence_gathering':
-        if (Array.isArray(record.evidence)) {
+        // Agent returns 'evidenceItems', not 'evidence'
+        const evidenceArray = (record.evidenceItems as unknown[]) ?? (record.evidence as unknown[]);
+        if (Array.isArray(evidenceArray)) {
           contextManager.addEvidence(
             forecastId,
-            record.evidence,
+            evidenceArray,
             record.summary as string | undefined
           );
         }
         break;
 
       case 'bayesian_update':
-        if (record.likelihoodRatio && record.posterior) {
+        // Handle array format: { updates: [...] }
+        if (Array.isArray(record.updates)) {
+          for (const update of record.updates as Array<Record<string, unknown>>) {
+            if (update.likelihoodRatio && update.posterior) {
+              contextManager.addBayesianUpdate(forecastId, {
+                evidenceDescription: (update.evidenceDescription as string) || 'Evidence update',
+                likelihoodRatio: update.likelihoodRatio as number,
+                prior: (update.prior as number) || 0.5,
+                posterior: update.posterior as number,
+                reasoning: (update.reasoning as string) || '',
+              });
+            }
+          }
+        }
+        // Fallback: handle single update format: { likelihoodRatio, posterior, ... }
+        else if (record.likelihoodRatio && record.posterior) {
           contextManager.addBayesianUpdate(forecastId, {
             evidenceDescription: record.evidenceDescription as string || record.factor as string || 'unknown',
             likelihoodRatio: record.likelihoodRatio as number,
@@ -209,9 +240,11 @@ class StageExecutor {
         break;
 
       case 'premortem':
+        // Agent returns 'concerns', not 'risks'
+        const concerns = (record.concerns as string[]) ?? (record.risks as string[]) ?? [];
         contextManager.addPremortemResults(
           forecastId,
-          (record.risks as string[]) || [],
+          concerns,
           (record.biases as string[]) || [],
           record.confidenceAdjustment as number | undefined
         );

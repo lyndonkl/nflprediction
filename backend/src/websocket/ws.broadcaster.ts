@@ -1,5 +1,6 @@
 import { wsManager } from './ws.manager.js';
 import { pipelineOrchestrator } from '../services/pipeline/pipeline.orchestrator.js';
+import { contextManager } from '../services/pipeline/context.manager.js';
 import type { ForecastingStage, ForecastContext, StageResult } from '../types/pipeline.types.js';
 import { wsLogger } from '../utils/logger.js';
 
@@ -46,12 +47,45 @@ class WSBroadcaster {
     stage: ForecastingStage,
     result: StageResult
   ): void {
+    // Get the updated context after stage completion
+    const context = contextManager.get(forecastId);
+
+    // Extract relevant context fields that the frontend needs
+    const contextUpdate = context ? {
+      // Base data
+      baseRate: context.baseRate,
+      baseRateConfidence: context.baseRateConfidence,
+      // Reference classes
+      referenceClasses: context.referenceClasses,
+      // Fermi decomposition
+      fermiSubQuestions: context.fermiSubQuestions,
+      fermiStructuralEstimate: context.fermiStructuralEstimate,
+      fermiReconciliation: context.fermiReconciliation,
+      // Evidence
+      evidence: context.evidence,
+      evidenceSummary: context.evidenceSummary,
+      // Bayesian updates
+      bayesianUpdates: context.bayesianUpdates,
+      posteriorProbability: context.posteriorProbability,
+      // Premortem
+      premortermConcerns: context.premortermConcerns,
+      biasFlags: context.biasFlags,
+      // Final results
+      finalProbability: context.finalProbability,
+      confidenceInterval: context.confidenceInterval,
+      recommendation: context.recommendation,
+      keyDrivers: context.keyDrivers,
+      // Agent contributions
+      agentContributions: context.agentContributions,
+    } : {};
+
     wsManager.broadcastToForecast(forecastId, {
       type: 'stage_complete',
       forecastId,
       stage,
       status: result.status,
       outputs: result.output,
+      contextUpdate,
       processingTimeMs: result.processingTimeMs,
       timestamp: new Date(),
     });

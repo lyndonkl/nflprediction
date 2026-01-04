@@ -106,6 +106,27 @@ class ContextManager {
   }
 
   /**
+   * Update Fermi decomposition results
+   */
+  updateFermiDecomposition(
+    forecastId: string,
+    subQuestions: Array<{ question: string; probability: number; confidence: number; reasoning: string }>,
+    structuralEstimate: number | null,
+    reconciliation: string | null
+  ): ForecastContext | undefined {
+    const context = this.get(forecastId);
+    if (!context) return undefined;
+
+    context.fermiSubQuestions = subQuestions;
+    context.fermiStructuralEstimate = structuralEstimate;
+    context.fermiReconciliation = reconciliation;
+    context.updatedAt = new Date();
+
+    memoryStore.setContext(context);
+    return context;
+  }
+
+  /**
    * Add evidence items
    */
   addEvidence(
