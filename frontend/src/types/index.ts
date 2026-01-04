@@ -52,6 +52,7 @@ export interface ForecastContext {
   posteriorProbability: number | null;
   premortermConcerns: string[];
   biasFlags: string[];
+  confidenceAdjustment: number | null;
   finalProbability: number | null;
   confidenceInterval: [number, number] | null;
   recommendation: string | null;

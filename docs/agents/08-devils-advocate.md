@@ -5,7 +5,7 @@
 - **Agent ID**: `devils-advocate`
 - **Version**: 1.0.0
 - **Stage**: premortem
-- **Description**: Challenges the HOME TEAM win forecast by identifying potential weaknesses and alternative scenarios.
+- **Description**: Challenges the HOME TEAM win forecast by identifying potential weaknesses and alternative scenarios. The confidence adjustment is integrated by the synthesis coordinator (moves probability toward 50% based on concern severity).
 - **Timeout**: 60000 ms
 - **Rate Limit**: 10/minute
 

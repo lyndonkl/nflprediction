@@ -48,6 +48,7 @@ export interface WSStageCompleteMessage {
   stage: ForecastingStage;
   status?: 'success' | 'partial' | 'failed';
   output: unknown;
+  contextUpdate?: Record<string, unknown>;
   processingTimeMs?: number;
   timestamp: Date;
 }

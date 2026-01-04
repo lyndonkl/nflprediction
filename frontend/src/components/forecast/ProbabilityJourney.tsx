@@ -359,11 +359,20 @@ function StepCard({
 
 /**
  * Helper to build probability steps from forecast context
+ *
+ * The probability journey shows:
+ * 1. Base Rate - historical anchor from reference classes
+ * 2. Bayesian Updates - evidence-based adjustments with likelihood ratios
+ * 3. Synthesis - final probability after integrating Fermi cross-check and premortem
+ *
+ * Note: Fermi and premortem are shown as separate informational panels,
+ * not as steps in the journey. The synthesis agent integrates all inputs.
  */
 export function buildProbabilitySteps(
   baseRate: number | null,
   bayesianUpdates: BayesianUpdate[],
-  evidence: EvidenceItem[]
+  finalProbability?: number | null,
+  recommendation?: string | null
 ): ProbabilityStep[] {
   const steps: ProbabilityStep[] = [];
 
@@ -378,7 +387,7 @@ export function buildProbabilitySteps(
     });
   }
 
-  // Bayesian update steps
+  // Bayesian update steps (evidence-based, uses likelihood ratios)
   for (const update of bayesianUpdates) {
     const direction = update.likelihoodRatio > 1 ? 'up' : update.likelihoodRatio < 1 ? 'down' : 'neutral';
     steps.push({
@@ -388,6 +397,22 @@ export function buildProbabilitySteps(
       summary: update.evidenceDescription,
       detail: update.reasoning,
       likelihoodRatio: update.likelihoodRatio,
+      direction,
+    });
+  }
+
+  // Synthesis step (final probability after integrating Fermi cross-check and premortem)
+  if (finalProbability !== null && finalProbability !== undefined) {
+    const lastProbability = steps.length > 0 ? steps[steps.length - 1].probability : (baseRate || 0.5);
+    const delta = finalProbability - lastProbability;
+    const direction = delta > 0.01 ? 'up' : delta < -0.01 ? 'down' : 'neutral';
+
+    steps.push({
+      probability: finalProbability,
+      source: 'synthesis',
+      agent: 'synthesis-coordinator',
+      summary: 'Final probability after Fermi cross-check and premortem review',
+      detail: recommendation || undefined,
       direction,
     });
   }

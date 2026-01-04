@@ -5,7 +5,7 @@
 - **Agent ID**: `fermi-decomposer`
 - **Version**: 1.0.0
 - **Stage**: fermi_decomposition
-- **Description**: Breaks down the prediction into independent sub-questions using Fermi estimation to cross-check base rate.
+- **Description**: Breaks down the prediction into independent sub-questions using Fermi estimation. The structural estimate serves as a cross-check against the base rate and is integrated by the synthesis coordinator (not applied directly to the probability journey).
 - **Timeout**: 60000 ms
 - **Rate Limit**: 10/minute
 

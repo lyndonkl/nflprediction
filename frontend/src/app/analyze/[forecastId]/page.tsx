@@ -9,6 +9,7 @@ import { useForecastState, useForecastActions } from '@/context/ForecastContext'
 import { PipelineOverview, getStageStatuses, getAgentCounts } from '@/components/agents/PipelineOverview';
 import { ProbabilityJourney, buildProbabilitySteps } from '@/components/forecast/ProbabilityJourney';
 import { EdgeCalculator } from '@/components/forecast/EdgeCalculator';
+import { FermiDecompositionPanel } from '@/components/forecast/FermiDecompositionPanel';
 import { CalmProgress } from '@/components/ui/Progress';
 import { Button, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import type { ForecastContext, ProbabilityStep, ForecastingStage } from '@/types';
@@ -50,6 +51,7 @@ const SAMPLE_FORECAST: ForecastContext = {
     'Georgia may be overvalued due to recency bias from recent success',
   ],
   biasFlags: ['Recency bias towards Georgia', 'Home field overweight'],
+  confidenceAdjustment: -0.02,
   finalProbability: 0.56,
   confidenceInterval: [0.48, 0.64],
   recommendation: 'Slight edge on Georgia at current market price',
@@ -106,19 +108,25 @@ export default function ForecastDetailPage() {
   const isComplete = displayForecast.status === 'completed';
 
   // Build probability steps for visualization
-  const probabilitySteps: ProbabilityStep[] = displayForecast.bayesianUpdates.length > 0
-    ? buildProbabilitySteps(
-        displayForecast.baseRate,
-        displayForecast.bayesianUpdates,
-        displayForecast.evidence
-      )
+  // Journey: Base Rate → Bayesian Updates → Synthesis (final)
+  // Fermi and premortem are shown as separate informational panels
+  const probabilitySteps: ProbabilityStep[] = buildProbabilitySteps(
+    displayForecast.baseRate,
+    displayForecast.bayesianUpdates,
+    displayForecast.finalProbability,
+    displayForecast.recommendation
+  );
+
+  // Fallback if no steps built
+  const displaySteps = probabilitySteps.length > 0
+    ? probabilitySteps
     : [
         {
           probability: displayForecast.baseRate || 0.5,
-          source: 'base_rate',
+          source: 'base_rate' as const,
           agent: 'base-rate-calculator',
           summary: 'Starting base rate from historical reference classes',
-          direction: 'neutral',
+          direction: 'neutral' as const,
         },
       ];
 
@@ -195,7 +203,7 @@ export default function ForecastDetailPage() {
           <Card>
             <CardContent>
               <ProbabilityJourney
-                steps={probabilitySteps}
+                steps={displaySteps}
                 finalEstimate={displayForecast.finalProbability || displayForecast.posteriorProbability || displayForecast.baseRate || 0.5}
                 confidenceInterval={displayForecast.confidenceInterval || undefined}
                 marketPrice={marketPrice}
@@ -206,6 +214,16 @@ export default function ForecastDetailPage() {
               />
             </CardContent>
           </Card>
+
+          {/* Fermi Decomposition Panel */}
+          {displayForecast.fermiSubQuestions && displayForecast.fermiSubQuestions.length > 0 && (
+            <FermiDecompositionPanel
+              subQuestions={displayForecast.fermiSubQuestions}
+              structuralEstimate={displayForecast.fermiStructuralEstimate}
+              baseRate={displayForecast.baseRate}
+              reconciliation={displayForecast.fermiReconciliation}
+            />
+          )}
 
           {/* Key Drivers */}
           {displayForecast.keyDrivers.length > 0 && (

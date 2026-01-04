@@ -70,6 +70,7 @@ class WSBroadcaster {
       // Premortem
       premortermConcerns: context.premortermConcerns,
       biasFlags: context.biasFlags,
+      confidenceAdjustment: context.confidenceAdjustment,
       // Final results
       finalProbability: context.finalProbability,
       confidenceInterval: context.confidenceInterval,
@@ -84,7 +85,7 @@ class WSBroadcaster {
       forecastId,
       stage,
       status: result.status,
-      outputs: result.output,
+      output: result.output,
       contextUpdate,
       processingTimeMs: result.processingTimeMs,
       timestamp: new Date(),

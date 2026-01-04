@@ -5,7 +5,7 @@
 - **Agent ID**: `synthesis-coordinator`
 - **Version**: 1.0.0
 - **Stage**: synthesis
-- **Description**: Integrates all inputs to generate final HOME TEAM win probability with confidence intervals.
+- **Description**: Integrates all inputs to generate final HOME TEAM win probability with confidence intervals. This is the only agent that modifies probability based on Fermi cross-check and premortem concerns (other stages provide informational inputs only).
 - **Timeout**: 90000 ms
 - **Rate Limit**: 5/minute
 

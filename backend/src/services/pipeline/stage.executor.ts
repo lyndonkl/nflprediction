@@ -3,6 +3,7 @@ import { coherenceRouter } from '../agents/coherence.router.js';
 import { contextManager } from './context.manager.js';
 import type { ForecastContext, ForecastingStage, StageConfig, StageResult } from '../../types/pipeline.types.js';
 import type { AgentContribution } from '../../types/agent.types.js';
+import type { EvidenceItem } from '../../types/forecast.types.js';
 import { pipelineLogger } from '../../utils/logger.js';
 
 /**
@@ -202,7 +203,7 @@ class StageExecutor {
 
       case 'evidence_gathering':
         // Agent returns 'evidenceItems', not 'evidence'
-        const evidenceArray = (record.evidenceItems as unknown[]) ?? (record.evidence as unknown[]);
+        const evidenceArray = (record.evidenceItems as EvidenceItem[]) ?? (record.evidence as EvidenceItem[]);
         if (Array.isArray(evidenceArray)) {
           contextManager.addEvidence(
             forecastId,

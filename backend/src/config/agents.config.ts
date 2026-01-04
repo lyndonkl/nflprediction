@@ -10,10 +10,10 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     id: 'reference-class-historical',
     name: 'Historical Matchup Finder',
     version: '1.0.0',
-    description: 'Searches historical college football games to find similar matchups based on rankings, conference, venue, and rivalry status.',
+    description: 'Searches historical college football games to find similar matchups based on rankings, conference, venue, and rivalry status using web search.',
     capabilities: {
       supportedStages: ['reference_class'],
-      actions: ['database_query', 'semantic_search'],
+      actions: ['web_search', 'database_query', 'semantic_search'],
       inputTypes: ['game_context'],
       outputTypes: ['reference_class_list'],
     },
@@ -34,10 +34,10 @@ export const DEFAULT_AGENTS: AgentCard[] = [
     id: 'base-rate-calculator',
     name: 'Base Rate Calculator',
     version: '1.0.0',
-    description: 'Calculates historical win probabilities from reference classes, providing a base rate anchor for forecasting.',
+    description: 'Calculates historical win probabilities from reference classes using web search for actual historical win rates.',
     capabilities: {
       supportedStages: ['base_rate'],
-      actions: ['statistical_analysis', 'probability_estimation'],
+      actions: ['web_search', 'statistical_analysis', 'probability_estimation'],
       inputTypes: ['reference_class_list'],
       outputTypes: ['base_rate'],
     },
@@ -255,16 +255,22 @@ export const PROMPT_TEMPLATES: Record<string, PromptTemplate> = {
     templateId: 'reference_class_default',
     stage: 'reference_class',
     name: 'Historical Reference Class Finder',
-    description: 'Finds similar historical matchups to anchor probability estimates',
+    description: 'Finds similar historical matchups using web search',
     systemPrompt: `# Identity
-You are a sports historian finding reference classes for college football probability forecasting.
+You are a sports historian finding reference classes for college football probability forecasting using web search.
 
 # Goal
-Identify 3-5 historical reference classes to anchor the probability that the HOME TEAM wins. Each reference class represents a category of similar historical games.
+Search for and identify 3-5 historical reference classes to anchor the probability that the HOME TEAM wins. Use web search to find ACTUAL historical data.
+
+# Method
+1. Search for head-to-head history between the teams (e.g., "Georgia vs Alabama all-time series record")
+2. Search for similar matchup patterns (e.g., "SEC championship game home team win rate")
+3. Search for ranking differential patterns (e.g., "top 10 vs top 10 college football home team win percentage")
+4. Verify sample sizes from actual historical data
 
 # Constraints
 - Focus on HOME TEAM win probability (not away team)
-- Estimate sample sizes conservatively from your college football knowledge
+- Use ACTUAL sample sizes from web search - do NOT estimate
 - Score relevance 0-1 based on similarity to current matchup
 - Include: head-to-head history, ranking differential, conference matchups, home favorite patterns
 - Recommend the primary reference class for anchoring the base rate
@@ -272,7 +278,7 @@ Identify 3-5 historical reference classes to anchor the probability that the HOM
 # Output
 Return valid JSON:
 {
-  "matches": [{"description": "string", "historicalSampleSize": number, "relevanceScore": 0-1, "category": "string"}],
+  "matches": [{"description": "string", "historicalSampleSize": number, "relevanceScore": 0-1, "category": "string", "winRate": 0-1}],
   "reasoning": "string",
   "recommendedClass": "string"
 }`,
@@ -288,7 +294,7 @@ Return valid JSON:
   <is_rivalry>{{isRivalry}}</is_rivalry>
 </game>
 
-Return 3-5 reference classes with estimated HOME TEAM win rates for each category.`,
+Search for ACTUAL historical data for 3-5 reference classes. Include the HOME TEAM win rate you found for each reference class.`,
     requiredVariables: ['homeTeam', 'awayTeam', 'venue', 'conference'],
     optionalVariables: ['homeRanking', 'awayRanking', 'isRivalry'],
     outputFormat: 'json',
@@ -298,23 +304,25 @@ Return 3-5 reference classes with estimated HOME TEAM win rates for each categor
     templateId: 'base_rate_default',
     stage: 'base_rate',
     name: 'Base Rate Probability Calculator',
-    description: 'Calculates base rate probability from reference classes',
+    description: 'Calculates base rate probability from reference classes using web search',
     systemPrompt: `# Identity
-You are a sports statistician calculating base rate probabilities for college football games.
+You are a sports statistician calculating base rate probabilities for college football games using web search.
 
 # Goal
-Calculate the base rate probability that the HOME TEAM wins, using the reference classes provided. This is the "outside view" anchor before considering game-specific evidence.
+Calculate the base rate probability that the HOME TEAM wins by searching for ACTUAL historical win rates for the reference classes provided.
 
-# Context
-Reference classes describe similar historical situations. For each class:
-- Estimate the historical HOME TEAM win rate based on the description and your college football knowledge
-- Weight by relevance score and sample size
-- Apply standard home field advantage (~3% for college football) if not already captured
+# Method
+1. Search for historical win rates for each reference class (e.g., "Georgia vs Alabama history win loss record", "SEC rivalry game home team win rate")
+2. Use REAL data from sports reference sites, ESPN, or official sources
+3. Weight the win rates by relevance score and sample size
+4. Apply standard home field advantage (~3% for college football) if not already captured
 
 # Constraints
+- ALWAYS search for actual historical data - do NOT estimate or guess win rates
 - Probability between 0.10 and 0.90
 - Provide 80% confidence interval (wider for smaller samples)
 - Be explicit: you are calculating HOME TEAM win probability
+- Cite your sources
 
 # Output
 Return valid JSON:
@@ -322,8 +330,8 @@ Return valid JSON:
   "probability": 0.XX,
   "confidenceInterval": [lower, upper],
   "sampleSize": number,
-  "sources": ["string - which reference classes contributed most"],
-  "reasoning": "string"
+  "sources": ["string - URLs or source names for win rate data"],
+  "reasoning": "string - explain how you calculated the weighted average"
 }`,
     userPromptTemplate: `Calculate the base rate probability that {{homeTeam}} (HOME TEAM) beats {{awayTeam}}.
 
@@ -338,7 +346,7 @@ Return valid JSON:
 {% endfor %}
 </reference_classes>
 
-Estimate HOME TEAM win rates for each reference class based on your college football knowledge, then calculate the weighted average base rate.`,
+Search for the ACTUAL historical win rates for these reference classes. Look up head-to-head records, conference win rates, and similar historical data. Then calculate the weighted average base rate for HOME TEAM winning.`,
     requiredVariables: ['homeTeam', 'awayTeam', 'referenceClasses'],
     optionalVariables: [],
     outputFormat: 'json',
