@@ -237,7 +237,7 @@ export type WSMessage =
   | { type: 'subscribed'; forecastId: string }
   | { type: 'unsubscribed'; forecastId: string }
   | { type: 'stage_start'; forecastId: string; stage: ForecastingStage }
-  | { type: 'stage_complete'; forecastId: string; stage: ForecastingStage; outputs: unknown }
+  | { type: 'stage_complete'; forecastId: string; stage: ForecastingStage; output: unknown; contextUpdate?: Partial<ForecastContext> }
   | { type: 'agent_output'; forecastId: string; stage: ForecastingStage; agentId: string; output: unknown }
   | { type: 'pipeline_complete'; forecastId: string; context: ForecastContext }
   | { type: 'pipeline_error'; forecastId: string; error: string }

@@ -530,25 +530,12 @@ class AgentInvoker {
         if (jsonMatch) {
           parsedOutput = JSON.parse(jsonMatch[0]);
         } else {
-          // Wrap text output in expected format
-          parsedOutput = {
-            evidenceItems: [{
-              description: response.output_text,
-              source: 'web_search',
-              relevance: 0.8,
-            }],
-            confidence: 0.7,
-          };
+          // Wrap text output in expected format based on agent type
+          parsedOutput = this.buildFallbackOutput(agent, response.output_text);
         }
       } catch {
-        parsedOutput = {
-          evidenceItems: [{
-            description: response.output_text,
-            source: 'web_search',
-            relevance: 0.8,
-          }],
-          confidence: 0.7,
-        };
+        // Wrap text output in expected format based on agent type
+        parsedOutput = this.buildFallbackOutput(agent, response.output_text);
       }
 
       // Build contribution with sources and citations
@@ -597,6 +584,72 @@ class AgentInvoker {
       day: 'numeric',
       year: 'numeric',
     });
+
+    // Reference class agent - find historical matchups
+    if (agent.id === 'reference-class-historical') {
+      return `
+Search for historical reference classes for the college football game:
+${context.awayTeam} @ ${context.homeTeam}
+
+Game Date: ${gameDate}
+
+Search for:
+1. Head-to-head history between ${context.homeTeam} and ${context.awayTeam} (all-time series record)
+2. Home team win rate in similar matchups (same conference, rivalry games)
+3. Historical win rates when teams have similar rankings
+4. Any relevant historical patterns for this matchup
+
+After searching, provide your analysis as JSON in this format:
+{
+  "matches": [
+    {
+      "description": "Description of the reference class",
+      "historicalSampleSize": 50,
+      "relevanceScore": 0.85,
+      "category": "head_to_head|conference|ranking|venue",
+      "winRate": 0.55
+    }
+  ],
+  "reasoning": "Explanation of how you found and selected these reference classes",
+  "recommendedClass": "The most relevant reference class to anchor the base rate"
+}
+`.trim();
+    }
+
+    // Base rate agent - calculate probability from reference classes
+    if (agent.id === 'base-rate-calculator') {
+      const previousOutputs = this.getPreviousOutputs(context);
+      const refClasses = this.extractReferenceClasses(previousOutputs);
+      const refClassesStr = refClasses.length > 0
+        ? JSON.stringify(refClasses, null, 2)
+        : 'No reference classes found - use general home team win rates';
+
+      return `
+Calculate the base rate probability that ${context.homeTeam} (HOME TEAM) beats ${context.awayTeam}.
+
+Game Date: ${gameDate}
+
+Reference Classes Found:
+${refClassesStr}
+
+Search for:
+1. Historical win rates for the reference classes above
+2. ${context.homeTeam} vs ${context.awayTeam} all-time record
+3. Home team win rates in college football for similar matchups
+4. Any relevant statistics to anchor the probability
+
+After searching, provide your analysis as JSON in this format:
+{
+  "probability": 0.55,
+  "confidenceInterval": [0.45, 0.65],
+  "sampleSize": 100,
+  "sources": ["ESPN", "Sports Reference"],
+  "reasoning": "Explanation of how you calculated the weighted base rate"
+}
+
+IMPORTANT: The "probability" field must be a number between 0 and 1 representing ${context.homeTeam}'s probability of winning.
+`.trim();
+    }
 
     if (agent.id === 'evidence-injury-analyzer') {
       return `
@@ -665,6 +718,52 @@ After searching, provide your analysis as JSON in this format:
   "reasoning": "Summary of evidence and its impact on prediction"
 }
 `.trim();
+  }
+
+  /**
+   * Build fallback output when JSON parsing fails, based on agent type
+   */
+  private buildFallbackOutput(agent: AgentCard, outputText: string): Record<string, unknown> {
+    // Reference class agent - need matches array
+    if (agent.id === 'reference-class-historical') {
+      return {
+        matches: [{
+          description: outputText.substring(0, 200),
+          historicalSampleSize: 50,
+          relevanceScore: 0.7,
+          category: 'general',
+          winRate: 0.5,
+        }],
+        reasoning: outputText,
+        recommendedClass: 'General historical matchup',
+        confidence: 0.6,
+      };
+    }
+
+    // Base rate agent - need probability
+    if (agent.id === 'base-rate-calculator') {
+      // Try to extract a probability number from the text
+      const probMatch = outputText.match(/(\d+(?:\.\d+)?)\s*%/);
+      const probability = probMatch ? parseFloat(probMatch[1]) / 100 : 0.5;
+      return {
+        probability: Math.max(0.1, Math.min(0.9, probability)),
+        confidenceInterval: [probability - 0.1, probability + 0.1],
+        sampleSize: 50,
+        sources: ['web_search'],
+        reasoning: outputText,
+        confidence: 0.6,
+      };
+    }
+
+    // Default: evidence format
+    return {
+      evidenceItems: [{
+        description: outputText,
+        source: 'web_search',
+        relevance: 0.8,
+      }],
+      confidence: 0.7,
+    };
   }
 
   /**

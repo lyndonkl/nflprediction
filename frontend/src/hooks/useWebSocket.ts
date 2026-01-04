@@ -101,8 +101,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         break;
 
       case 'stage_complete':
-        // Use contextUpdate (processed context fields) if available, fallback to outputs
-        const updates = (message as { contextUpdate?: unknown }).contextUpdate || message.outputs;
+        // Use contextUpdate (processed context fields) - contains all updated forecast data
+        const updates = message.contextUpdate || {};
         options.onStageComplete?.(message.forecastId, message.stage, updates);
         break;
 
