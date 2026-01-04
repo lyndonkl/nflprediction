@@ -236,6 +236,7 @@ class AgentInvoker {
         // Include Fermi decomposition outputs for reconciliation
         baseContext.fermiSubQuestions = this.extractFermiSubQuestions(previousOutputs);
         baseContext.fermiStructuralEstimate = this.extractFermiStructuralEstimate(previousOutputs);
+        baseContext.fermiReconciliation = this.extractFermiReconciliation(previousOutputs);
         break;
 
       case 'calibration':
@@ -367,6 +368,20 @@ class AgentInvoker {
       const firstOutput = fermiOutput[0] as Record<string, unknown>;
       if (typeof firstOutput?.structuralEstimate === 'number') {
         return firstOutput.structuralEstimate;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extract Fermi reconciliation text from previous outputs
+   */
+  private extractFermiReconciliation(outputs: Record<string, unknown>): string | null {
+    const fermiOutput = outputs['fermi_decomposition'];
+    if (Array.isArray(fermiOutput) && fermiOutput.length > 0) {
+      const firstOutput = fermiOutput[0] as Record<string, unknown>;
+      if (typeof firstOutput?.reconciliation === 'string') {
+        return firstOutput.reconciliation;
       }
     }
     return null;

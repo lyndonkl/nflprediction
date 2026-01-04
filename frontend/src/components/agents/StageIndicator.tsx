@@ -60,14 +60,20 @@ export function StageIndicator({
       <button
         onClick={onClick}
         className={clsx(
-          'flex flex-col items-center p-2 rounded-md transition-colors',
+          'flex flex-col items-center p-2 rounded-md transition-colors relative',
           'hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500',
           isActive && 'bg-blue-50 ring-2 ring-blue-200',
           bgStyles[status]
         )}
         title={info.description}
-        aria-label={`${info.name}: ${status}`}
+        aria-label={`${info.name}: ${status}${agentCount > 1 ? ` (${agentCount} agents in parallel)` : ''}`}
       >
+        {/* Agent count badge - prominent when multiple agents */}
+        {agentCount > 1 && (
+          <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
+            {agentCount}
+          </span>
+        )}
         <StatusIcon
           className={clsx(
             'w-5 h-5',
@@ -81,8 +87,8 @@ export function StageIndicator({
         )}>
           {info.shortName}
         </span>
-        {agentCount > 0 && (
-          <span className="text-xs text-slate-400">({agentCount})</span>
+        {agentCount === 1 && (
+          <span className="text-xs text-slate-400">(1)</span>
         )}
       </button>
     );
@@ -114,11 +120,15 @@ export function StageIndicator({
           )}>
             {info.name}
           </span>
-          {agentCount > 0 && (
-            <span className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-              {agentCount} agent{agentCount > 1 ? 's' : ''}
+          {agentCount > 1 ? (
+            <span className="text-xs text-white bg-purple-600 px-2 py-0.5 rounded-full font-medium">
+              {agentCount} agents parallel
             </span>
-          )}
+          ) : agentCount === 1 ? (
+            <span className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+              1 agent
+            </span>
+          ) : null}
         </div>
         <p className="text-sm text-slate-500 truncate">{info.description}</p>
       </div>
